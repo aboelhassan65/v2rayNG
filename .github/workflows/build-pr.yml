@@ -8,34 +8,39 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Code
+      - name: Checkout Code with Submodules
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download libv2ray.aar
+      - name: Download libv2ray.aar & Build Native Libs
         run: |
           mkdir -p V2rayNG/app/libs
-          Tag=$(curl -s "https://api.github.com/repos/2dust/AndroidLibXrayLite/releases/latest" | grep -Po '"tag_name": "\K.*?(?=")')
-          curl -L -o V2rayNG/app/libs/libv2ray.aar "https://github.com/2dust/AndroidLibXrayLite/releases/download/${Tag}/libv2ray.aar"
+          wget -O V2rayNG/app/libs/libv2ray.aar "https://github.com/2dust/AndroidLibXrayLite/releases/latest/download/libv2ray.aar"
+          chmod +x compile-hevtun.sh
+          ./compile-hevtun.sh
+
+      - name: Grant execute permission for gradlew
+        working-directory: ./V2rayNG
+        run: chmod +x gradlew
 
       - name: Build Debug APK
         working-directory: ./V2rayNG
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: v2rayNG-shizuku-debug-apk
+          name: v2rayNG-shizuku-apk
           path: V2rayNG/app/build/outputs/apk/debug/*.apk
